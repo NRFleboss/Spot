@@ -3,17 +3,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Title
-st.title("🎵 Spotify Playlist Data Analyzer")
-
-# Password Protection
+# Function to check the password
 def check_password():
     password = st.text_input("Enter password:", type="password")
     if password != st.secrets["auth"]["password"]:
         st.warning("Incorrect password. Try again.")
         st.stop()
 
+# Call the password check before loading the app
 check_password()
+
+# Title
+st.title("🎵 Spotify Playlist Data Analyzer")
 
 # File Upload
 uploaded_files = st.file_uploader("Upload CSV Files", accept_multiple_files=True, type="csv")
