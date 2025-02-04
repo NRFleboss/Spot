@@ -21,16 +21,30 @@ uploaded_files = st.sidebar.file_uploader("Upload CSV Files", accept_multiple_fi
 
 @st.cache_data
 def load_data(files):
-    """Load and combine data from uploaded CSV files."""
+    """Load and combine data from uploaded CSV files with error handling."""
     all_data = []
+    required_columns = {"title", "listeners", "streams"}
     for file in files:
-        df = pd.read_csv(file)
-        # Convert date_added to datetime (if available)
-        if "date_added" in df.columns:
-            df["date_added"] = pd.to_datetime(df["date_added"], errors="coerce")
-        # Extract artist name from filename (assuming format "artist-....csv")
-        df["artist"] = file.name.split("-")[0]
-        all_data.append(df)
+        try:
+            # Read the CSV file (specify encoding if needed)
+            df = pd.read_csv(file, encoding='utf-8')
+            
+            # Check for required columns
+            if not required_columns.issubset(df.columns):
+                st.error(f"File {file.name} is missing one or more required columns: {required_columns}")
+                continue  # Skip this file
+            
+            # Convert date_added to datetime if available
+            if "date_added" in df.columns:
+                df["date_added"] = pd.to_datetime(df["date_added"], errors="coerce")
+            
+            # Extract artist name from filename (using '-' as a separator, fallback if not found)
+            parts = file.name.split("-")
+            df["artist"] = parts[0] if parts[0] else "Unknown"
+            
+            all_data.append(df)
+        except Exception as e:
+            st.error(f"Error processing file {file.name}: {e}")
     if all_data:
         return pd.concat(all_data, ignore_index=True)
     else:
@@ -40,7 +54,12 @@ def load_data(files):
 if uploaded_files:
     df = load_data(uploaded_files)
     
-    # Clean data: remove rows missing essential values
+    # Check if any data was loaded
+    if df.empty:
+        st.error("No valid data loaded. Please check your CSV files.")
+        st.stop()
+    
+    # Clean data: remove rows missing essential values in "listeners" and "streams"
     df.dropna(subset=["listeners", "streams"], inplace=True)
     
     # Sidebar filter: Artist selection
@@ -49,7 +68,7 @@ if uploaded_files:
     if selected_artist != "All":
         df = df[df["artist"] == selected_artist]
     
-    # Sidebar filter: Date Range selection (if date_added exists)
+    # Sidebar filter: Date Range selection (if date_added exists and has valid dates)
     if "date_added" in df.columns and not df["date_added"].isnull().all():
         min_date = df["date_added"].min().date()
         max_date = df["date_added"].max().date()
@@ -127,14 +146,15 @@ if uploaded_files:
             st.dataframe(df[["title", "streams", "listeners", "artist"]].reset_index(drop=True))
     
     elif viz_option == "Time Series Evolution":
-        # Line chart to display daily evolution of streams and listeners
-        if "date_added" in df.columns:
+        # Check that date_added exists and has valid values
+        if "date_added" in df.columns and not df["date_added"].isnull().all():
             # Aggregate data by day
             daily_data = df.groupby(df["date_added"].dt.date).agg({
                 "streams": "sum",
                 "listeners": "sum"
             }).reset_index().rename(columns={"date_added": "date"})
             if display_option in ("Graph", "Both"):
+                # Using the date column for x-axis
                 fig = px.line(daily_data, 
                               x="index",  # you can change this to x="date" if you prefer the actual date
                               y=["streams", "listeners"],
@@ -145,6 +165,6 @@ if uploaded_files:
                 st.subheader("Daily Evolution (Data)")
                 st.dataframe(daily_data)
         else:
-            st.info("No date information available for time series analysis.")
+            st.info("No valid date information available for time series analysis.")
 else:
     st.info("Please upload CSV files to begin.")
