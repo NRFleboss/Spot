@@ -78,37 +78,53 @@ if uploaded_files:
                                "Streams vs. Listeners", 
                                "Time Series Evolution"])
     
+    # Let user choose whether to display graph, table, or both
+    display_option = st.radio("Display Options", ("Graph", "Data Table", "Both"))
+    
     if viz_option == "Top Playlists by Streams":
-        # Select top 10 playlists by streams
-        top_streams = df.nlargest(10, "streams")
-        fig = px.bar(top_streams, 
-                     x="streams", 
-                     y="title", 
-                     orientation="h",
-                     title=f"Top 10 Playlists by Streams ({selected_artist})",
-                     labels={"streams": "Streams", "title": "Playlist"})
-        st.plotly_chart(fig, use_container_width=True)
+        # Select top 25 playlists by streams
+        top_streams = df.nlargest(25, "streams")
+        
+        if display_option in ("Graph", "Both"):
+            fig = px.bar(top_streams, 
+                         x="streams", 
+                         y="title", 
+                         orientation="h",
+                         title=f"Top 25 Playlists by Streams ({selected_artist})",
+                         labels={"streams": "Streams", "title": "Playlist"})
+            st.plotly_chart(fig, use_container_width=True)
+        if display_option in ("Data Table", "Both"):
+            st.subheader("Top 25 Playlists by Streams (Data)")
+            st.dataframe(top_streams[["title", "streams", "artist"]].reset_index(drop=True))
     
     elif viz_option == "Top Playlists by Listeners":
-        # Select top 10 playlists by listeners
-        top_listeners = df.nlargest(10, "listeners")
-        fig = px.bar(top_listeners, 
-                     x="listeners", 
-                     y="title", 
-                     orientation="h",
-                     title=f"Top 10 Playlists by Listeners ({selected_artist})",
-                     labels={"listeners": "Listeners", "title": "Playlist"})
-        st.plotly_chart(fig, use_container_width=True)
+        # Select top 25 playlists by listeners
+        top_listeners = df.nlargest(25, "listeners")
+        
+        if display_option in ("Graph", "Both"):
+            fig = px.bar(top_listeners, 
+                         x="listeners", 
+                         y="title", 
+                         orientation="h",
+                         title=f"Top 25 Playlists by Listeners ({selected_artist})",
+                         labels={"listeners": "Listeners", "title": "Playlist"})
+            st.plotly_chart(fig, use_container_width=True)
+        if display_option in ("Data Table", "Both"):
+            st.subheader("Top 25 Playlists by Listeners (Data)")
+            st.dataframe(top_listeners[["title", "listeners", "artist"]].reset_index(drop=True))
     
     elif viz_option == "Streams vs. Listeners":
-        # Scatter plot: Streams vs. Listeners
-        fig = px.scatter(df, 
-                         x="listeners", 
-                         y="streams", 
-                         hover_data=["title", "artist"],
-                         title=f"Streams vs. Listeners ({selected_artist})",
-                         labels={"listeners": "Listeners", "streams": "Streams"})
-        st.plotly_chart(fig, use_container_width=True)
+        if display_option in ("Graph", "Both"):
+            fig = px.scatter(df, 
+                             x="listeners", 
+                             y="streams", 
+                             hover_data=["title", "artist"],
+                             title=f"Streams vs. Listeners ({selected_artist})",
+                             labels={"listeners": "Listeners", "streams": "Streams"})
+            st.plotly_chart(fig, use_container_width=True)
+        if display_option in ("Data Table", "Both"):
+            st.subheader("Streams vs. Listeners (Data)")
+            st.dataframe(df[["title", "streams", "listeners", "artist"]].reset_index(drop=True))
     
     elif viz_option == "Time Series Evolution":
         # Line chart to display daily evolution of streams and listeners
@@ -118,14 +134,16 @@ if uploaded_files:
                 "streams": "sum",
                 "listeners": "sum"
             }).reset_index().rename(columns={"date_added": "date"})
-            fig = px.line(daily_data, 
-                          x="index",  # dates will be on x-axis
-                          y=["streams", "listeners"],
-                          title=f"Daily Evolution of Streams and Listeners ({selected_artist})",
-                          labels={"value": "Count", "index": "Date", "variable": "Metric"})
-            # Alternative: use the date column directly if preferred:
-            # fig = px.line(daily_data, x="date", y=["streams", "listeners"], ...)
-            st.plotly_chart(fig, use_container_width=True)
+            if display_option in ("Graph", "Both"):
+                fig = px.line(daily_data, 
+                              x="index",  # you can change this to x="date" if you prefer the actual date
+                              y=["streams", "listeners"],
+                              title=f"Daily Evolution of Streams and Listeners ({selected_artist})",
+                              labels={"value": "Count", "index": "Date", "variable": "Metric"})
+                st.plotly_chart(fig, use_container_width=True)
+            if display_option in ("Data Table", "Both"):
+                st.subheader("Daily Evolution (Data)")
+                st.dataframe(daily_data)
         else:
             st.info("No date information available for time series analysis.")
 else:
